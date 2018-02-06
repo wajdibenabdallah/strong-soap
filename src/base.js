@@ -5,7 +5,7 @@ var NamespaceContext = require('./parser/nscontext');
 var SOAPElement = require('./soapModel').SOAPElement;
 var xmlBuilder = require('xmlbuilder');
 var XMLHandler = require('./parser/xmlHandler');
-  
+
 class Base extends EventEmitter {
   constructor(wsdl, options) {
     super();
@@ -63,12 +63,15 @@ class Base extends EventEmitter {
     this.wsdl.options.forceSoapVersion = options.forceSoapVersion;
   }
 
-  static createSOAPEnvelope(prefix, nsURI) {
+  static createSOAPEnvelope(prefix, nsURI, extraPrefix = null, extraNSURI = null) {
     prefix = prefix || 'soap';
     nsURI = nsURI || 'http://schemas.xmlsoap.org/soap/envelope/';
     var doc = xmlBuilder.create(prefix + ':Envelope',
       {version: '1.0', encoding: 'UTF-8', standalone: true});
     doc.attribute('xmlns:' + prefix, nsURI);
+    if (extraPrefix && extraNSURI) {
+      doc.attribute('xmlns:' + extraPrefix, extraNSURI);
+    }
     let header = doc.element(prefix + ':Header');
     let body = doc.element(prefix + ':Body');
     return {
@@ -119,9 +122,9 @@ class Base extends EventEmitter {
       let elementDescriptor;
       if (typeof soapHeader.value === 'object') {
         if (soapHeader.qname && soapHeader.qname.nsURI) {
-            let element = this.findElement(soapHeader.qname.nsURI, soapHeader.qname.name);
-            elementDescriptor =
-              element && element.describe(this.wsdl.definitions);
+          let element = this.findElement(soapHeader.qname.nsURI, soapHeader.qname.name);
+          elementDescriptor =
+            element && element.describe(this.wsdl.definitions);
         }
         xmlHandler.jsonToXml(soapHeaderElement, null, elementDescriptor,
           soapHeader.value);

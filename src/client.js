@@ -20,7 +20,7 @@ class Client extends Base {
     super(wsdl, options);
     options = options || {};
     this.xmlHandler = new XMLHandler(wsdl.definitions.schemas, options);
-    this._initializeServices(endpoint);
+    this._initializeServices(endpoint, options);
     this.httpClient = options.httpClient || new HttpClient(options);
   }
 
@@ -41,37 +41,37 @@ class Client extends Base {
     this.SOAPAction = soapAction;
   }
 
-  _initializeServices(endpoint) {
+  _initializeServices(endpoint, extraOptions) {
     var definitions = this.wsdl.definitions;
     var services = definitions.services;
     for (var name in services) {
-      this[name] = this._defineService(services[name], endpoint);
+      this[name] = this._defineService(services[name], endpoint, extraOptions);
     }
   }
 
-  _defineService(service, endpoint) {
+  _defineService(service, endpoint, extraOptions) {
     var ports = service.ports;
     var def = {};
     for (var name in ports) {
       def[name] = this._definePort(ports[name],
-        endpoint ? endpoint : ports[name].location);
+        endpoint ? endpoint : ports[name].location, extraOptions);
     }
     return def;
   }
 
-  _definePort(port, endpoint) {
+  _definePort(port, endpoint, extraOptions) {
     var location = endpoint;
     var binding = port.binding;
     var operations = binding.operations;
     var def = {};
     for (var name in operations) {
-      def[name] = this._defineOperation(operations[name], location);
+      def[name] = this._defineOperation(operations[name], location, extraOptions);
       this[name] = def[name];
     }
     return def;
   }
 
-  _defineOperation(operation, location) {
+  _defineOperation(operation, location, extraOptions) {
     var self = this;
     var temp;
     return function(args, callback, options, extraHeaders) {
@@ -91,13 +91,13 @@ class Client extends Base {
       self._invoke(operation, args, location,
         function(error, result, raw, soapHeader) {
           callback(error, result, raw, soapHeader);
-        }, options, extraHeaders);
+        }, options, extraHeaders, extraOptions);
     };
   }
 
-  
 
-  _invoke(operation, args, location, callback, options, extraHeaders) {
+
+  _invoke(operation, args, location, callback, options, extraHeaders, extraOptions) {
     var self = this,
       name = operation.$name,
       input = operation.input,
@@ -172,11 +172,9 @@ class Client extends Base {
       debugSensitive('client request. options: %j', options);
     }
 
-
-
     var nsContext = this.createNamespaceContext(soapNsPrefix, soapNsURI);
     var xmlHandler = this.xmlHandler || new XMLHandler(this.wsdl.schemas, options);
-    var envelope = Client.createSOAPEnvelope(soapNsPrefix, soapNsURI);
+    var envelope = Client.createSOAPEnvelope(soapNsPrefix, soapNsURI, extraOptions.extraPrefix, extraOptions.extraNMLS);
 
     var soapHeaderElement = envelope.header;
     var soapBodyElement = envelope.body;
@@ -194,7 +192,7 @@ class Client extends Base {
       let complexTypes = schemas[uri].complexTypes;
       if(complexTypes) {
         for (let type in complexTypes) {
-            complexTypes[type].describe(this.wsdl.definitions);
+          complexTypes[type].describe(this.wsdl.definitions);
         }
       }
     }
